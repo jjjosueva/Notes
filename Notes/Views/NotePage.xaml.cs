@@ -1,29 +1,68 @@
-namespace Notes;
+using System;
+using System.IO;
+using Microsoft.Maui.Controls;
 
-public partial class NotePage : ContentPage
+namespace Notes.Views
 {
-    string _fileName = Path.Combine(FileSystem.AppDataDirectory, "notes.txt");
-
-    public NotePage()
+    [QueryProperty(nameof(ItemId), nameof(ItemId))]
+    public partial class NotePage : ContentPage
     {
-        InitializeComponent();
+        private string _itemId;
 
-        if (File.Exists(_fileName))
-            TextEditor.Text = File.ReadAllText(_fileName);
-    }
+        public string ItemId
+        {
+            get => _itemId;
+            set
+            {
+                _itemId = value;
+                LoadNote(GetFilePathFromItemId(_itemId));
+            }
+        }
 
-    private void SaveButton_Clicked(object sender, EventArgs e)
-    {
-        // Save the file.
-        File.WriteAllText(_fileName, TextEditor.Text);
-    }
+        public NotePage()
+        {
+            InitializeComponent();
+        }
 
-    private void DeleteButton_Clicked(object sender, EventArgs e)
-    {
-        // Delete the file.
-        if (File.Exists(_fileName))
-            File.Delete(_fileName);
+        private string GetFilePathFromItemId(string itemId)
+        {
+            string appDataPath = FileSystem.AppDataDirectory;
+            return Path.Combine(appDataPath, $"{itemId}.notes.txt");
+        }
 
-        TextEditor.Text = string.Empty;
+        private void LoadNote(string fileName)
+        {
+            Models.Note noteModel = new Models.Note
+            {
+                Filename = fileName
+            };
+
+            if (File.Exists(fileName))
+            {
+                noteModel.Text = File.ReadAllText(fileName);
+                noteModel.Date = File.GetCreationTime(fileName);
+            }
+
+            BindingContext = noteModel;
+        }
+
+        private async void SaveButton_Clicked(object sender, EventArgs e)
+        {
+            if (BindingContext is Models.Note note)
+            {
+                File.WriteAllText(note.Filename, TextEditor.Text);
+            }
+            await Shell.Current.GoToAsync("..");
+        }
+
+        private async void DeleteButton_Clicked(object sender, EventArgs e)
+        {
+            if (BindingContext is Models.Note note)
+            {
+                if (File.Exists(note.Filename))
+                    File.Delete(note.Filename);
+            }
+            await Shell.Current.GoToAsync("..");
+        }
     }
 }
